@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pamonhada JPR</title>
+    <!-- Tailwind CDN (ideal para protótipo). Em produção prefira build via PostCSS/CLI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-900">
+    <div class="max-w-4xl mx-auto p-6">
+      <div class="bg-white rounded-2xl shadow-lg p-6">
+        <header class="text-center mb-4">
+          <h1 class="text-2xl font-semibold">Pamonhada JPR</h1>
+          <p class="text-sm text-gray-500">
+            Pamonhas artesanais — escolha os sabores, ajuste a quantidade e
+            finalize no checkout.
+          </p>
+        </header>
+
+        <main class="grid lg:grid-cols-3 gap-6">
+          <section id="products" class="lg:col-span-2 grid gap-4"></section>
+
+          <aside
+            class="sticky top-6 bg-gradient-to-b from-white to-gray-50 border border-gray-100 p-5 rounded-lg h-fit"
+          >
+            <div class="flex items-start justify-between">
+              <h2 class="text-lg font-medium">Resumo do pedido</h2>
+              <div
+                id="cart-badge"
+                class="ml-2 bg-orange-100 text-orange-700 text-sm px-2 py-0.5 rounded-full"
+              >
+                0
+              </div>
+            </div>
+
+            <div id="cart-summary" class="text-sm text-gray-600 my-4">
+              Nenhum item no carrinho.
+            </div>
+
+            <div class="flex items-center justify-between mb-4">
+              <div class="text-sm text-gray-600">Total</div>
+              <div id="totalValue" class="text-2xl font-bold text-gray-900">
+                R$ 0,00
+              </div>
+            </div>
+
+            <button
+              id="buyBtn"
+              class="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl py-3 px-4 disabled:opacity-60 transition-shadow shadow-sm hover:shadow-md"
+              aria-disabled="true"
+            >
+              Comprar
+            </button>
+            <!--
+            <div class="mt-4 text-xs text-gray-400">
+              Observação: o link de checkout é construído automaticamente. Se
+              necessário, substitua
+              <code class="bg-gray-100 px-1 rounded">YAMPI_CHECKOUT_URL</code>
+              no script.
+            </div>
+            -->
+          </aside>
+        </main>
+
+        <footer class="text-center mt-6 text-xs text-gray-400">
+          • Feito pela Atoms Code
+        </footer>
+      </div>
+    </div>
+
+    <!-- toast -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50"></div>
+
+    <script>
+      // Placeholder: troque pela sua URL de checkout Yampi se precisar
+      /*
+      const YAMPI_CHECKOUT_URL =
+        "https://exemplo-checkout-yampi.local/checkout";
+      */
+      const PRODUCTS = [
+        {
+          id: "pam-sal",
+          name: "Pamonha de Sal",
+          price: 10.0,
+          code: "DMGC1DGGOH",
+          desc: "Salgada, tradicional.",
+        },
+        {
+          id: "pam-doce",
+          name: "Pamonha de Doce",
+          price: 10.0,
+          code: "5V0P9YI3SJ",
+          desc: "Doce, com toque de canela.",
+        },
+        {
+          id: "pam-moda",
+          name: "Pamonha à Moda",
+          price: 12.0,
+          code: "G245KR51N8",
+          desc: "Especial da casa com recheio.",
+        },
+      ];
+
+      const productsEl = document.getElementById("products");
+      const totalValueEl = document.getElementById("totalValue");
+      const buyBtn = document.getElementById("buyBtn");
+      const cartSummary = document.getElementById("cart-summary");
+      const cartBadge = document.getElementById("cart-badge");
+      const toastEl = document.getElementById("toast");
+
+      // estado do carrinho: { id: quantidade }
+      const cart = {};
+
+      function formatMoney(v) {
+        return "R$ " + v.toFixed(2).replace(".", ",");
+      }
+
+      function renderProducts() {
+        productsEl.innerHTML = "";
+        PRODUCTS.forEach((p) => {
+          const card = document.createElement("article");
+          card.className =
+            "bg-gradient-to-b from-white to-gray-50 border border-gray-100 rounded-2xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition";
+          card.innerHTML = `
+              <div class="flex gap-4">
+                <div class="w-24 h-24 rounded-lg flex items-center justify-center bg-orange-50 text-orange-600 text-3xl">🌽</div>
+                <div class="flex-1">
+                  <h3 class="text-lg font-semibold">${p.name}</h3>
+                  <div class="text-orange-600 font-bold mb-1">${formatMoney(
+                    p.price
+                  )}</div>
+                  <p class="text-sm text-gray-500">${p.desc}</p>
+                </div>
+              </div>
+              <div class="mt-4 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <button aria-label="Diminuir quantidade" data-id="${
+                    p.id
+                  }" class="decrease inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-100 hover:bg-gray-200">-</button>
+                  <input aria-label="Quantidade" data-id="${
+                    p.id
+                  }" class="qty-input w-14 text-center rounded-md border border-gray-200" type="number" min="1" value="1" />
+                  <button aria-label="Aumentar quantidade" data-id="${
+                    p.id
+                  }" class="increase inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-100 hover:bg-gray-200">+</button>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button data-id="${
+                    p.id
+                  }" class="add-btn inline-flex items-center gap-2 bg-white border border-orange-200 text-orange-600 px-3 py-2 rounded-lg hover:bg-orange-50 transition">Adicionar</button>
+                </div>
+              </div>
+            `;
+          productsEl.appendChild(card);
+        });
+
+        // delegação de eventos para controles de quantidade e adicionar
+        productsEl.querySelectorAll(".increase").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const id = e.currentTarget.getAttribute("data-id");
+            const input = productsEl.querySelector(
+              `.qty-input[data-id="${id}"]`
+            );
+            input.value = Math.max(1, parseInt(input.value || "1", 10) + 1);
+          });
+        });
+        productsEl.querySelectorAll(".decrease").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const id = e.currentTarget.getAttribute("data-id");
+            const input = productsEl.querySelector(
+              `.qty-input[data-id="${id}"]`
+            );
+            input.value = Math.max(1, parseInt(input.value || "1", 10) - 1);
+          });
+        });
+
+        productsEl.querySelectorAll(".add-btn").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const id = e.currentTarget.getAttribute("data-id");
+            const input = productsEl.querySelector(
+              `.qty-input[data-id="${id}"]`
+            );
+            const qty = Math.max(1, parseInt(input.value || "1", 10));
+            addToCart(id, qty);
+            pulseButton(btn);
+          });
+        });
+      }
+
+      function pulseButton(btn) {
+        btn.classList.add("transform", "scale-95");
+        setTimeout(() => btn.classList.remove("transform", "scale-95"), 150);
+      }
+
+      function addToCart(id, qty) {
+        cart[id] = (cart[id] || 0) + qty;
+        showToast(
+          `${qty} × ${PRODUCTS.find((p) => p.id === id).name} adicionado(s)`
+        );
+        renderCart();
+      }
+
+      function removeFromCart(id) {
+        delete cart[id];
+        renderCart();
+      }
+
+      function setQuantity(id, qty) {
+        if (qty <= 0) {
+          removeFromCart(id);
+          return;
+        }
+        cart[id] = qty;
+        renderCart();
+      }
+
+      function renderCart() {
+        const entries = Object.entries(cart);
+        if (entries.length === 0) {
+          cartSummary.textContent = "Nenhum item no carrinho.";
+          cartBadge.textContent = "0";
+          totalValueEl.textContent = formatMoney(0);
+          buyBtn.disabled = true;
+          buyBtn.setAttribute("aria-disabled", "true");
+          return;
+        }
+
+        const lines = entries.map(([id, qty]) => {
+          const prod = PRODUCTS.find((p) => p.id === id);
+          return `<div class="flex items-center justify-between py-1">
+                      <div class="flex-1 text-sm">${qty} × <strong>${
+            prod.name
+          }</strong></div>
+                      <div class="text-sm text-gray-500">${formatMoney(
+                        prod.price * qty
+                      )}</div>
+                      <button aria-label="Remover" data-id="${id}" class="ml-3 text-red-500 remove-item text-sm">✕</button>
+                    </div>`;
+        });
+
+        cartSummary.innerHTML = lines.join("");
+        cartBadge.textContent = entries.reduce((s, [, q]) => s + q, 0);
+
+        const total = entries.reduce(
+          (s, [id, q]) => s + PRODUCTS.find((p) => p.id === id).price * q,
+          0
+        );
+        totalValueEl.textContent = formatMoney(total);
+        buyBtn.disabled = false;
+        buyBtn.removeAttribute("aria-disabled");
+
+        // attach remove handlers
+        cartSummary.querySelectorAll(".remove-item").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const id = e.currentTarget.getAttribute("data-id");
+            removeFromCart(id);
+            showToast("Item removido");
+          });
+        });
+      }
+
+      function showToast(message) {
+        const node = document.createElement("div");
+        node.className =
+          "bg-gray-900 text-white px-4 py-2 rounded-md shadow-lg mb-2 opacity-0 transform translate-y-4 transition-all";
+        node.textContent = message;
+        toastEl.appendChild(node);
+        // trigger animation
+        requestAnimationFrame(() => {
+          node.classList.remove("opacity-0");
+          node.classList.remove("translate-y-4");
+        });
+        setTimeout(() => {
+          node.classList.add("opacity-0");
+          node.classList.add("translate-y-4");
+          setTimeout(() => node.remove(), 300);
+        }, 2000);
+      }
+
+      // Evento do botão comprar: constrói link Yampi com códigos e quantidades
+      buyBtn.addEventListener("click", () => {
+        const entries = Object.entries(cart);
+        if (entries.length === 0) {
+          alert("Carrinho vazio. Adicione um item antes de comprar.");
+          return;
+        }
+
+        const codigos = entries
+          .map(([id, qty]) => {
+            const p = PRODUCTS.find((x) => x.id === id);
+            return `${p.code}:${qty}`;
+          })
+          .join(",");
+
+        const linkCheckout = `https://jpr5.pay.yampi.com.br/r/${codigos}`;
+        // redireciona para o checkout
+        window.location.href = linkCheckout;
+      });
+
+      // Inicialização
+      renderProducts();
+      renderCart();
+    </script>
+  </body>
+</html>
