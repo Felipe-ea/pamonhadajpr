@@ -91,7 +91,7 @@
           name: "Pamonha de Doce",
           price: 10.0,
           code: "5V0P9YI3SJ",
-          desc: "Doce, com toque de canela.",
+          desc: "Doce, tradicional.",
         },
         {
           id: "pam-moda",
@@ -244,7 +244,6 @@
                         <div class="text-sm text-gray-600">${formatMoney(
                           prod.price * qty
                         )}</div>
-                        <button aria-label="Remover item" data-id="${id}" class="ml-2 text-red-500 remove-item text-sm">Remover</button>
                       </div>
                     </div>`;
         });
@@ -260,7 +259,7 @@
         buyBtn.disabled = false;
         buyBtn.removeAttribute("aria-disabled");
 
-        // attach handlers: decrease, increase, input change, remove
+        // attach handlers: decrease, increase, input change
         cartSummary.querySelectorAll(".qty-decrease").forEach((btn) => {
           btn.addEventListener("click", (e) => {
             const id = e.currentTarget.getAttribute("data-id");
@@ -285,12 +284,7 @@
             else setQuantity(id, val);
           });
         });
-        cartSummary.querySelectorAll(".remove-item").forEach((btn) => {
-          btn.addEventListener("click", (e) => {
-            const id = e.currentTarget.getAttribute("data-id");
-            removeFromCart(id);
-          });
-        });
+        // (Remover button removed) remoção é feita reduzindo quantidade para 0
       }
 
       function showToast(message) {
